@@ -1,0 +1,1091 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inventario · Pearson Heels</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#F2EDE4;
+    --paper:#FAF7F0;
+    --ink:#241F1C;
+    --ink-soft:#5B534C;
+    --wine:#6B1E2E;
+    --wine-deep:#4E1521;
+    --brass:#A9823C;
+    --dust:#C9A38F;
+    --line:#DCD2C0;
+    --amber:#B5762A;
+    --good:#3F6B4E;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif;min-height:100vh;}
+  .app{max-width:920px;margin:0 auto;padding:20px 16px 60px;}
+
+  /* Login */
+  .login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
+  .login-card{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:36px 32px;max-width:380px;width:100%;box-shadow:0 12px 40px rgba(36,31,28,.12);}
+  .login-card h1{font-family:'Fraunces',serif;font-size:24px;margin:0 0 4px;}
+  .login-card .sub{font-size:12.5px;color:var(--ink-soft);letter-spacing:.04em;text-transform:uppercase;margin-bottom:24px;}
+  .login-card .field{margin-bottom:14px;}
+  .login-card .btn{width:100%;margin-top:6px;padding:12px;font-size:14px;}
+  .login-msg{font-size:12.5px;color:var(--wine);margin-top:12px;min-height:16px;}
+
+  /* Header */
+  .header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:14px;margin-bottom:22px;padding-bottom:18px;border-bottom:2px solid var(--ink);}
+  .header h1{font-family:'Fraunces',serif;font-weight:700;font-size:28px;letter-spacing:-0.01em;margin:0 0 2px;}
+  .header .sub{font-size:12.5px;color:var(--ink-soft);letter-spacing:.04em;text-transform:uppercase;}
+  .user-row{display:flex;align-items:center;gap:14px;}
+  .user-email{font-size:12px;color:var(--ink-soft);}
+  .btn-logout{background:none;border:1px solid var(--line);color:var(--ink-soft);font-family:'Inter',sans-serif;font-weight:600;font-size:12px;padding:7px 12px;border-radius:20px;cursor:pointer;}
+  .btn-logout:hover{border-color:var(--wine);color:var(--wine);}
+
+  /* Tabs */
+  .tabs{display:flex;gap:6px;margin-bottom:20px;border-bottom:1px solid var(--line);overflow-x:auto;}
+  .tab{font-family:'Inter',sans-serif;font-weight:600;font-size:13.5px;padding:10px 16px;background:none;border:none;cursor:pointer;color:var(--ink-soft);letter-spacing:.02em;border-bottom:2px solid transparent;transform:translateY(1px);white-space:nowrap;}
+  .tab.active{color:var(--wine);border-bottom:2px solid var(--wine);}
+  .panel{display:none;}
+  .panel.active{display:block;animation:fade .25s ease;}
+  @keyframes fade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+
+  /* Cards / tickets */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px;}
+  .ticket{position:relative;background:var(--paper);border:1px solid var(--line);border-radius:3px;padding:16px 14px 14px;box-shadow:0 1px 0 rgba(36,31,28,.04);}
+  .ticket::before{content:'';position:absolute;top:-6px;left:50%;transform:translateX(-50%);width:12px;height:12px;border-radius:50%;background:var(--bg);border:1px solid var(--line);}
+  .ticket .model{font-family:'Fraunces',serif;font-weight:600;font-size:15px;margin-bottom:2px;}
+  .ticket .meta{font-size:11px;color:var(--ink-soft);margin-bottom:10px;letter-spacing:.02em;}
+  .ticket .dash{border-top:1px dashed var(--line);margin:8px 0 10px;}
+  .ticket .count{font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600;}
+  .ticket .count.low{color:var(--amber);}
+  .ticket .count.zero{color:var(--wine);}
+  .ticket .tag{font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);}
+  .ticket.zero{opacity:.55;}
+
+  /* Forms */
+  .card{background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:22px;margin-bottom:18px;}
+  .card h2{font-family:'Fraunces',serif;font-size:18px;font-weight:600;margin:0 0 16px;}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 14px;}
+  .field{display:flex;flex-direction:column;gap:5px;}
+  .field.full{grid-column:1/-1;}
+  label{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);font-weight:600;}
+  input,select{font-family:'Inter',sans-serif;font-size:14px;padding:9px 11px;border:1px solid var(--line);border-radius:3px;background:#fff;color:var(--ink);}
+  input:focus,select:focus{outline:2px solid var(--brass);outline-offset:0;border-color:var(--brass);}
+  .btn{font-family:'Inter',sans-serif;font-weight:600;font-size:13.5px;padding:11px 18px;border:none;border-radius:3px;background:var(--wine);color:#fff;cursor:pointer;letter-spacing:.02em;}
+  .btn:hover{background:var(--wine-deep);}
+  .btn:disabled{background:var(--line);color:var(--ink-soft);cursor:not-allowed;}
+  .btn-row{margin-top:16px;display:flex;justify-content:flex-end;}
+
+  .search{margin-bottom:12px;}
+
+  /* History table */
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);padding:8px 10px;border-bottom:2px solid var(--ink);}
+  td{padding:9px 10px;border-bottom:1px solid var(--line);}
+  tr:last-child td{border-bottom:none;}
+  .pill{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.03em;}
+  .pill.ingreso{background:#E8EEE9;color:var(--good);}
+  .pill.venta{background:#F3E4E6;color:var(--wine);}
+  .empty{text-align:center;color:var(--ink-soft);font-size:13.5px;padding:30px 0;}
+  .del{background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:16px;line-height:1;}
+  .del:hover{color:var(--wine);}
+  .msg{font-size:12.5px;color:var(--good);margin-top:8px;min-height:16px;}
+  .msg.err{color:var(--wine);}
+  .footnote{font-size:11px;color:var(--ink-soft);margin-top:24px;text-align:center;}
+  .edit{background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:14px;line-height:1;margin-right:8px;}
+  .edit:hover{color:var(--brass);}
+  .modal-overlay{position:fixed;inset:0;background:rgba(36,31,28,.45);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px;}
+  .modal-overlay.hidden{display:none;}
+  .modal{background:var(--paper);border-radius:5px;padding:24px;max-width:440px;width:100%;box-shadow:0 12px 40px rgba(36,31,28,.25);}
+  .modal h3{font-family:'Fraunces',serif;font-size:17px;margin:0 0 16px;}
+  .modal .btn-row{display:flex;gap:10px;justify-content:flex-end;}
+  .btn-secondary{background:none;border:1px solid var(--line);color:var(--ink-soft);font-family:'Inter',sans-serif;font-weight:600;font-size:13.5px;padding:11px 18px;border-radius:3px;cursor:pointer;}
+  .btn-secondary:hover{border-color:var(--ink-soft);color:var(--ink);}
+
+  /* Dashboard */
+  .kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:22px;}
+  .kpi{background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:16px;}
+  .kpi .num{font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600;color:var(--wine);}
+  .kpi .label{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);margin-top:2px;}
+  .group-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;}
+  .group-card{background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:16px;}
+  .group-card.zero{opacity:.6;}
+  .group-card .gtitle{font-family:'Fraunces',serif;font-weight:600;font-size:16px;margin-bottom:1px;}
+  .group-card .gtotal{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--ink-soft);margin-bottom:10px;}
+  .group-card .gtotal b{color:var(--wine);font-size:15px;}
+  .size-chips{display:flex;flex-wrap:wrap;gap:6px;}
+  .gcard-header{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+  .btn-comment{background:none;border:1px solid var(--line);color:var(--ink-soft);font-family:'Inter',sans-serif;font-size:10.5px;font-weight:600;letter-spacing:.03em;text-transform:uppercase;padding:5px 9px;border-radius:20px;cursor:pointer;white-space:nowrap;flex-shrink:0;}
+  .btn-comment:hover{border-color:var(--brass);color:var(--brass);}
+  .btn-comment.has-note{border-color:var(--brass);color:var(--brass);background:#F2E9D8;}
+  .gcard-note{margin-top:10px;padding:8px 10px;background:#F2E9D8;border-left:2px solid var(--brass);border-radius:2px;font-size:12px;color:var(--ink);line-height:1.4;}
+  .size-chip{font-family:'IBM Plex Mono',monospace;font-size:11.5px;padding:4px 8px;border-radius:3px;border:1px solid var(--line);background:#fff;color:var(--ink);}
+  .size-chip.low{border-color:var(--amber);color:var(--amber);}
+  .size-chip.zero{border-color:var(--line);color:var(--ink-soft);text-decoration:line-through;}
+  .size-input-field{display:flex;flex-direction:column;gap:5px;}
+  .size-input-field label{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink);text-transform:none;letter-spacing:0;font-weight:600;}
+  .modelo-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 14px;border:1px solid var(--line);border-radius:3px;margin-bottom:8px;background:var(--paper);flex-wrap:wrap;}
+  .modelo-row .info{font-size:13.5px;flex:1;min-width:200px;}
+  .modelo-row .info b{font-family:'Fraunces',serif;}
+  .modelo-row .code{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--brass);background:#F2E9D8;padding:2px 8px;border-radius:3px;margin-left:6px;}
+  .modelo-row .actions{display:flex;gap:2px;}
+  .modelo-row.editing{background:#FBF8F2;}
+  .modelo-row .edit-fields{display:flex;gap:8px;flex-wrap:wrap;flex:1;}
+  .modelo-row .edit-fields input{width:110px;padding:7px 9px;font-size:13px;}
+  .top-msg{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:20px;font-size:12.5px;z-index:2000;opacity:0;pointer-events:none;transition:opacity .25s ease;}
+  .top-msg.show{opacity:1;}
+  @media (max-width:520px){ .form-grid{grid-template-columns:1fr;} }
+</style>
+</head>
+<body>
+
+  <!-- ===================== LOGIN ===================== -->
+  <div class="login-wrap" id="loginScreen">
+    <div class="login-card">
+      <h1>Pearson Heels</h1>
+      <div class="sub">Sistema de inventario</div>
+      <div class="field">
+        <label>Correo / usuario</label>
+        <input id="login-email" type="email" placeholder="usuario@pearsonheels.com" autocomplete="username">
+      </div>
+      <div class="field">
+        <label>Contraseña</label>
+        <input id="login-password" type="password" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <button class="btn" id="btnLogin">Ingresar</button>
+      <div class="login-msg" id="loginMsg"></div>
+    </div>
+  </div>
+
+  <!-- ===================== APP ===================== -->
+  <div id="appRoot" style="display:none;">
+    <div class="app">
+      <div class="header">
+        <div>
+          <h1>Inventario de calzado</h1>
+          <div class="sub">Pearson Heels · Modelo · Taco · Color · Talla</div>
+        </div>
+        <div class="user-row">
+          <span class="user-email" id="userEmail"></span>
+          <button class="btn-logout" id="btnLogout">Cerrar sesión</button>
+        </div>
+      </div>
+
+      <div class="tabs">
+        <button class="tab active" data-tab="dashboard">Dashboard</button>
+        <button class="tab" data-tab="modelos">Modelos</button>
+        <button class="tab" data-tab="stock">Stock por talla</button>
+        <button class="tab" data-tab="ingreso">Agregar stock</button>
+        <button class="tab" data-tab="venta">Registrar venta</button>
+        <button class="tab" data-tab="historial">Historial</button>
+      </div>
+
+      <div class="panel active" id="panel-dashboard">
+        <div class="kpi-row">
+          <div class="kpi"><div class="num" id="kpiTotal">–</div><div class="label">Pares en stock</div></div>
+          <div class="kpi"><div class="num" id="kpiModelos">–</div><div class="label">Modelos únicos</div></div>
+          <div class="kpi"><div class="num" id="kpiBajo">–</div><div class="label">Modelos con stock bajo</div></div>
+          <div class="kpi"><div class="num" id="kpiVentas">–</div><div class="label">Ventas últimos 7 días</div></div>
+        </div>
+        <input class="search" type="text" id="dashSearch" placeholder="Buscar modelo o color...">
+        <div class="group-grid" id="dashGrid"></div>
+        <div class="empty" id="dashEmpty" style="display:none;">Aún no hay stock registrado.</div>
+      </div>
+
+      <div class="panel" id="panel-modelos">
+        <div class="card">
+          <h2>Catálogo de modelos</h2>
+          <p style="font-size:12.5px;color:var(--ink-soft);margin:-8px 0 16px;">Un "modelo" es la combinación única de Modelo + Taco + Color. Regístralos aquí una vez y luego solo los eliges al agregar stock.</p>
+          <div class="form-grid">
+            <div class="field"><label>Modelo</label><input id="m-modelo" placeholder="Dolce"></div>
+            <div class="field"><label>Taco (n°)</label><input id="m-taco" type="number" min="0" placeholder="7"></div>
+            <div class="field"><label>Color</label><input id="m-color" placeholder="Negro"></div>
+            <div class="field"><label>Código</label><input id="m-codigo" placeholder="Se sugiere automático"></div>
+          </div>
+          <div class="btn-row"><button class="btn" id="btnAddModelo">Agregar modelo</button></div>
+          <div class="msg" id="msgModelo"></div>
+        </div>
+        <div class="card">
+          <h2>Modelos registrados</h2>
+          <div id="modelosList"></div>
+          <div class="empty" id="modelosEmpty" style="display:none;">Aún no registras ningún modelo.</div>
+        </div>
+      </div>
+
+      <div class="panel" id="panel-stock">
+        <input class="search" type="text" id="stockSearch" placeholder="Buscar por modelo, color, taco o talla...">
+        <div class="grid" id="stockGrid"></div>
+        <div class="empty" id="stockEmpty" style="display:none;">Aún no hay stock registrado. Agrega tu primer ingreso en la pestaña "Agregar stock".</div>
+      </div>
+
+      <div class="panel" id="panel-ingreso">
+        <div class="card">
+          <h2>Nuevo ingreso de stock</h2>
+          <div class="form-grid">
+            <div class="field full">
+              <label>Modelo</label>
+              <select id="in-modelo-select"><option value="">Selecciona un modelo del catálogo...</option></select>
+            </div>
+          </div>
+          <div id="in-no-modelos" class="empty" style="display:none;">No tienes modelos registrados todavía. Ve a la pestaña <b>Modelos</b> y agrega uno primero.</div>
+
+          <div id="in-size-section" style="display:none;">
+            <div class="form-grid" style="margin-top:14px;">
+              <div class="field"><label>Talla desde</label><input id="in-talla-desde" type="number" value="35"></div>
+              <div class="field"><label>Talla hasta</label><input id="in-talla-hasta" type="number" value="39"></div>
+            </div>
+            <div class="btn-row" style="justify-content:flex-start;margin-top:8px;">
+              <button class="btn-secondary" id="btnGenerarTallas">Generar tallas</button>
+            </div>
+            <div class="form-grid" id="in-size-grid" style="margin-top:14px;"></div>
+            <div class="form-grid" style="margin-top:14px;">
+              <div class="field"><label>Fecha</label><input id="in-fecha" type="date"></div>
+            </div>
+            <div class="btn-row"><button class="btn" id="btnIngreso">Agregar al stock</button></div>
+          </div>
+          <div class="msg" id="msgIngreso"></div>
+        </div>
+      </div>
+
+      <div class="panel" id="panel-venta">
+        <div class="card">
+          <h2>Registrar venta</h2>
+          <input class="search" type="text" id="ventaSearch" placeholder="Buscar variante disponible...">
+          <div class="field full" style="margin-bottom:14px;">
+            <label>Variante</label>
+            <select id="ventaSelect"><option value="">Selecciona una variante disponible...</option></select>
+          </div>
+          <div class="form-grid">
+            <div class="field"><label>Cliente / contacto</label><input id="v-cliente" placeholder="N° o nombre"></div>
+            <div class="field"><label>Fecha</label><input id="v-fecha" type="date"></div>
+            <div class="field"><label>Tipo de venta</label>
+              <select id="v-tipoventa"><option>Venta directa</option><option>Venta Live Deisy</option></select>
+            </div>
+            <div class="field"><label>Canal</label>
+              <select id="v-canal"><option>WSP</option><option>IG</option><option>Otro</option></select>
+            </div>
+            <div class="field"><label>Método de pago</label>
+              <select id="v-pago"><option>Yape</option><option>Transferencia</option><option>Otro</option></select>
+            </div>
+          </div>
+          <div class="btn-row"><button class="btn" id="btnVenta" disabled>Selecciona una variante</button></div>
+          <div class="msg" id="msgVenta"></div>
+        </div>
+      </div>
+
+      <div class="panel" id="panel-historial">
+        <div class="card">
+          <h2>Historial de movimientos</h2>
+          <table>
+            <thead><tr><th>Fecha</th><th>Tipo</th><th>Variante</th><th>Cant.</th><th>Detalle</th><th></th></tr></thead>
+            <tbody id="historyBody"></tbody>
+          </table>
+          <div class="empty" id="historyEmpty" style="display:none;">Sin movimientos todavía.</div>
+        </div>
+      </div>
+
+      <div class="footnote">Los datos están en la nube: cualquier persona con su propio usuario ve y edita el mismo inventario, desde cualquier dispositivo.</div>
+    </div>
+  </div>
+
+  <div class="modal-overlay hidden" id="editOverlay">
+    <div class="modal">
+      <h3>Editar movimiento</h3>
+      <div class="form-grid">
+        <div class="field"><label>Modelo</label><input id="edit-modelo"></div>
+        <div class="field"><label>Taco (n°)</label><input id="edit-taco" type="number" min="0"></div>
+        <div class="field"><label>Color</label><input id="edit-color"></div>
+        <div class="field"><label>Talla</label><input id="edit-talla" type="number" min="0"></div>
+        <div class="field"><label id="edit-cantidad-label">Cantidad</label><input id="edit-cantidad" type="number" min="1"></div>
+        <div class="field"><label>Fecha</label><input id="edit-fecha" type="date"></div>
+        <div class="field" id="edit-cliente-field"><label>Cliente / contacto</label><input id="edit-cliente"></div>
+        <div class="field" id="edit-tipoventa-field"><label>Tipo de venta</label>
+          <select id="edit-tipoventa"><option>Venta directa</option><option>Venta Live Deisy</option></select>
+        </div>
+        <div class="field" id="edit-canal-field"><label>Canal</label>
+          <select id="edit-canal"><option>WSP</option><option>IG</option><option>Otro</option></select>
+        </div>
+        <div class="field" id="edit-pago-field"><label>Método de pago</label>
+          <select id="edit-pago"><option>Yape</option><option>Transferencia</option><option>Otro</option></select>
+        </div>
+      </div>
+      <div class="msg" id="msgEdit"></div>
+      <div class="btn-row" style="margin-top:16px;">
+        <button class="btn-secondary" id="btnCancelEdit">Cancelar</button>
+        <button class="btn" id="btnSaveEdit">Guardar cambios</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay hidden" id="confirmOverlay">
+    <div class="modal">
+      <h3>Confirmar</h3>
+      <p id="confirmText" style="font-size:13.5px;color:var(--ink-soft);margin:0 0 18px;">¿Confirmas esta acción?</p>
+      <div class="btn-row">
+        <button class="btn-secondary" id="btnCancelDelete">Cancelar</button>
+        <button class="btn" id="btnConfirmDelete">Sí, continuar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay hidden" id="commentOverlay">
+    <div class="modal">
+      <h3 id="commentTitle">Comentario interno</h3>
+      <div class="field full">
+        <label>Nota (visible para todo tu equipo)</label>
+        <textarea id="commentText" rows="4" style="font-family:'Inter',sans-serif;font-size:14px;padding:10px 11px;border:1px solid var(--line);border-radius:3px;resize:vertical;width:100%;" placeholder="Ej: 3 pares de la talla 37 están en la otra tienda..."></textarea>
+      </div>
+      <div class="btn-row" style="margin-top:16px;">
+        <button class="btn-secondary" id="btnClearComment">Borrar comentario</button>
+        <button class="btn-secondary" id="btnCancelComment">Cancelar</button>
+        <button class="btn" id="btnSaveComment">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="top-msg" id="topMsg"></div>
+
+  <script src="config.js"></script>
+  <script>
+  // ==========================================================
+  // Cliente de Supabase
+  // ==========================================================
+  let supabase = null;
+  const configOk = typeof SUPABASE_URL === 'string' && typeof SUPABASE_ANON_KEY === 'string'
+    && !SUPABASE_URL.includes('PEGA_AQUI') && !SUPABASE_ANON_KEY.includes('PEGA_AQUI')
+    && SUPABASE_URL.startsWith('http');
+
+  if(configOk && window.supabase && window.supabase.createClient){
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  }
+
+  let movimientos = [];
+  let modelosCatalogo = [];
+  let comentarios = {};
+  let selectedVariant = null;
+  let editingModeloId = null;
+  let editingId = null;
+  let commentingKey = null;
+  let pendingConfirmAction = null;
+  let realtimeChannel = null;
+
+  function todayStr(){ return new Date().toISOString().slice(0,10); }
+  function escapeHtml(s){
+    return String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function showTopMsg(text){
+    const el = document.getElementById('topMsg');
+    el.textContent = text;
+    el.classList.add('show');
+    clearTimeout(el._t);
+    el._t = setTimeout(()=> el.classList.remove('show'), 2200);
+  }
+
+  // ==========================================================
+  // AUTENTICACIÓN
+  // ==========================================================
+  async function initAuth(){
+    document.getElementById('btnLogin').disabled = !supabase;
+    if(!configOk){
+      document.getElementById('loginMsg').textContent = 'Falta configurar config.js con los datos de tu proyecto de Supabase.';
+      return;
+    }
+    if(!supabase){
+      document.getElementById('loginMsg').textContent = 'No se pudo cargar la conexión con la base de datos. Revisa tu internet y recarga la página.';
+      return;
+    }
+    try{
+      const { data: { session } } = await supabase.auth.getSession();
+      if(session){
+        onLoggedIn(session);
+      }else{
+        showLogin();
+      }
+      supabase.auth.onAuthStateChange((event, session)=>{
+        if(event === 'SIGNED_IN' && session){
+          onLoggedIn(session);
+        }else if(event === 'SIGNED_OUT'){
+          showLogin();
+        }
+      });
+    }catch(e){
+      document.getElementById('loginMsg').textContent = 'No se pudo conectar con la base de datos. Revisa config.js.';
+      showLogin();
+    }
+  }
+
+  function showLogin(){
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('appRoot').style.display = 'none';
+    if(realtimeChannel){ supabase.removeChannel(realtimeChannel); realtimeChannel = null; }
+  }
+
+  function onLoggedIn(session){
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('appRoot').style.display = 'block';
+    document.getElementById('userEmail').textContent = session.user.email;
+    loadData();
+    subscribeRealtime();
+  }
+
+  document.getElementById('btnLogin').onclick = async ()=>{
+    if(!supabase) return;
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    const msg = document.getElementById('loginMsg');
+    msg.textContent = '';
+    if(!email || !password){
+      msg.textContent = 'Ingresa tu correo y contraseña.';
+      return;
+    }
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if(error){
+      msg.textContent = 'Usuario o contraseña incorrectos.';
+    }
+  };
+
+  document.getElementById('login-password').addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter') document.getElementById('btnLogin').click();
+  });
+
+  document.getElementById('btnLogout').onclick = async ()=>{
+    await supabase.auth.signOut();
+  };
+
+  function subscribeRealtime(){
+    if(realtimeChannel) return;
+    realtimeChannel = supabase.channel('inventario-cambios')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'movimientos' }, loadData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'modelos' }, loadData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'comentarios' }, loadData)
+      .subscribe();
+  }
+
+  // ==========================================================
+  // CARGA DE DATOS
+  // ==========================================================
+  async function loadData(){
+    const [{ data: mov, error: e1 }, { data: mods, error: e2 }, { data: coms, error: e3 }] = await Promise.all([
+      supabase.from('movimientos').select('*').order('created_at', { ascending: true }),
+      supabase.from('modelos').select('*').order('created_at', { ascending: true }),
+      supabase.from('comentarios').select('*'),
+    ]);
+
+    if(e1 || e2 || e3){
+      showTopMsg('No se pudo cargar la información. Revisa tu conexión.');
+      return;
+    }
+
+    movimientos = (mov||[]).map(r=>({
+      id: r.id, tipo: r.tipo, modelo: r.modelo, taco: r.taco, color: r.color, talla: r.talla,
+      cantidad: r.cantidad, fecha: r.fecha, cliente: r.cliente, tipoVenta: r.tipo_venta,
+      canal: r.canal, pago: r.pago,
+    }));
+    modelosCatalogo = (mods||[]).map(r=>({ id: r.id, modelo: r.modelo, taco: r.taco, color: r.color, codigo: r.codigo }));
+    comentarios = {};
+    (coms||[]).forEach(r=> comentarios[r.group_key] = r.texto);
+
+    renderAll();
+  }
+
+  function variantKey(m){ return [m.modelo.trim(), m.taco, m.color.trim(), m.talla].join('|').toLowerCase(); }
+  function groupKey(m){ return [m.modelo.trim(), m.taco, m.color.trim()].join('|').toLowerCase(); }
+
+  function computeStock(){
+    const map = {};
+    movimientos.forEach(m=>{
+      const k = variantKey(m);
+      if(!map[k]) map[k] = {modelo:m.modelo, taco:m.taco, color:m.color, talla:m.talla, cantidad:0};
+      map[k].cantidad += (m.tipo==='ingreso' ? m.cantidad : -m.cantidad);
+    });
+    return Object.values(map).sort((a,b)=> a.modelo.localeCompare(b.modelo) || a.color.localeCompare(b.color) || a.taco-b.taco || a.talla-b.talla);
+  }
+
+  function computeGroups(){
+    const map = {};
+    movimientos.forEach(m=>{
+      const k = groupKey(m);
+      if(!map[k]) map[k] = {modelo:m.modelo, taco:m.taco, color:m.color, tallas:{}, total:0};
+      const delta = (m.tipo==='ingreso' ? m.cantidad : -m.cantidad);
+      map[k].tallas[m.talla] = (map[k].tallas[m.talla]||0) + delta;
+      map[k].total += delta;
+    });
+    return Object.values(map).sort((a,b)=> a.modelo.localeCompare(b.modelo) || a.color.localeCompare(b.color) || a.taco-b.taco);
+  }
+
+  // ==========================================================
+  // RENDER
+  // ==========================================================
+  function renderAll(){
+    renderDashboard();
+    renderModelos();
+    populateModeloSelect();
+    renderStockGrid();
+    renderVentaList();
+    renderHistory();
+  }
+
+  function renderStockGrid(){
+    const stock = computeStock();
+    const q = document.getElementById('stockSearch').value.trim().toLowerCase();
+    const filtered = stock.filter(v=>{
+      if(!q) return true;
+      return (v.modelo+' '+v.color+' '+v.taco+' '+v.talla).toLowerCase().includes(q);
+    });
+    const grid = document.getElementById('stockGrid');
+    grid.innerHTML = '';
+    document.getElementById('stockEmpty').style.display = stock.length===0 ? 'block':'none';
+    filtered.forEach(v=>{
+      const zero = v.cantidad<=0;
+      const low = v.cantidad>0 && v.cantidad<=2;
+      const div = document.createElement('div');
+      div.className = 'ticket'+(zero?' zero':'');
+      div.innerHTML = `
+        <div class="model">${escapeHtml(v.modelo)}</div>
+        <div class="meta">Taco ${v.taco} · ${escapeHtml(v.color)} · Talla ${v.talla}</div>
+        <div class="dash"></div>
+        <div class="count ${zero?'zero':low?'low':''}">${v.cantidad}</div>
+        <div class="tag">${zero?'Agotado':low?'Stock bajo':'pares disponibles'}</div>
+      `;
+      grid.appendChild(div);
+    });
+  }
+
+  function renderVentaList(){
+    const stock = computeStock().filter(v=>v.cantidad>0);
+    const q = document.getElementById('ventaSearch').value.trim().toLowerCase();
+    const filtered = stock.filter(v=>{
+      if(!q) return true;
+      return (v.modelo+' '+v.color+' '+v.taco+' '+v.talla).toLowerCase().includes(q);
+    });
+    const select = document.getElementById('ventaSelect');
+    const current = select.value;
+    select.innerHTML = '<option value="">Selecciona una variante disponible...</option>' +
+      filtered.map(v=>{
+        const k = variantKey(v);
+        return `<option value="${k}">${escapeHtml(v.modelo)} · Taco ${v.taco} · ${escapeHtml(v.color)} · Talla ${v.talla} — ${v.cantidad} disp.</option>`;
+      }).join('');
+
+    window.__stockByKey = {};
+    stock.forEach(v=> window.__stockByKey[variantKey(v)] = v);
+
+    if(filtered.some(v=>variantKey(v)===current)){
+      select.value = current;
+    }else if(selectedVariant && window.__stockByKey[selectedVariant]){
+      select.value = selectedVariant;
+    }else{
+      selectedVariant = null;
+      window.__selectedVariantData = null;
+    }
+
+    const btn = document.getElementById('btnVenta');
+    if(select.value){
+      selectedVariant = select.value;
+      window.__selectedVariantData = window.__stockByKey[select.value];
+      btn.disabled = false;
+      btn.textContent = 'Registrar venta';
+    }else{
+      btn.disabled = true;
+      btn.textContent = 'Selecciona una variante';
+    }
+  }
+
+  document.getElementById('ventaSelect').addEventListener('change', ()=>{
+    const select = document.getElementById('ventaSelect');
+    selectedVariant = select.value || null;
+    window.__selectedVariantData = selectedVariant ? window.__stockByKey[selectedVariant] : null;
+    const btn = document.getElementById('btnVenta');
+    btn.disabled = !selectedVariant;
+    btn.textContent = selectedVariant ? 'Registrar venta' : 'Selecciona una variante';
+  });
+
+  function renderHistory(){
+    const body = document.getElementById('historyBody');
+    body.innerHTML = '';
+    const sorted = [...movimientos].sort((a,b)=> (b.fecha||'').localeCompare(a.fecha||''));
+    document.getElementById('historyEmpty').style.display = sorted.length===0 ? 'block':'none';
+    sorted.forEach(m=>{
+      const tr = document.createElement('tr');
+      const detalle = m.tipo==='venta' ? `${escapeHtml(m.tipoVenta||'—')} · ${escapeHtml(m.cliente||'—')} · ${escapeHtml(m.canal||'')} · ${escapeHtml(m.pago||'')}` : 'Ingreso de pedido';
+      tr.innerHTML = `
+        <td>${m.fecha}</td>
+        <td><span class="pill ${m.tipo}">${m.tipo}</span></td>
+        <td>${escapeHtml(m.modelo)} · T${m.taco} · ${escapeHtml(m.color)} · ${m.talla}</td>
+        <td>${m.cantidad}</td>
+        <td>${detalle}</td>
+        <td>
+          <button class="edit" data-id="${m.id}" title="Editar movimiento">✎</button>
+          <button class="del" data-id="${m.id}" title="Eliminar movimiento">✕</button>
+        </td>
+      `;
+      body.appendChild(tr);
+    });
+    body.querySelectorAll('.edit').forEach(btn=>{
+      btn.onclick = ()=> openEditModal(btn.dataset.id);
+    });
+    body.querySelectorAll('.del').forEach(btn=>{
+      btn.onclick = ()=> requestDeleteMovimiento(btn.dataset.id);
+    });
+  }
+
+  function renderDashboard(){
+    const groups = computeGroups();
+    const totalPares = groups.reduce((s,g)=>s+Math.max(g.total,0),0);
+    const bajoCount = groups.filter(g=>g.total>0 && g.total<=4).length;
+    const cutoff = new Date(); cutoff.setDate(cutoff.getDate()-7);
+    const ventas7 = movimientos.filter(m=>m.tipo==='venta' && new Date(m.fecha)>=cutoff)
+      .reduce((s,m)=>s+m.cantidad,0);
+
+    document.getElementById('kpiTotal').textContent = totalPares;
+    document.getElementById('kpiModelos').textContent = groups.filter(g=>g.total>0).length;
+    document.getElementById('kpiBajo').textContent = bajoCount;
+    document.getElementById('kpiVentas').textContent = ventas7;
+
+    const q = document.getElementById('dashSearch').value.trim().toLowerCase();
+    const filtered = groups.filter(g=>{
+      if(!q) return true;
+      return (g.modelo+' '+g.color+' '+g.taco).toLowerCase().includes(q);
+    });
+
+    const grid = document.getElementById('dashGrid');
+    grid.innerHTML = '';
+    document.getElementById('dashEmpty').style.display = groups.length===0 ? 'block':'none';
+
+    filtered.forEach(g=>{
+      const zero = g.total<=0;
+      const tallasOrdenadas = Object.keys(g.tallas).map(Number).sort((a,b)=>a-b);
+      const chips = tallasOrdenadas.map(t=>{
+        const c = g.tallas[t];
+        const cls = c<=0 ? 'zero' : c<=2 ? 'low' : '';
+        return `<span class="size-chip ${cls}">${t}: ${c}</span>`;
+      }).join('');
+      const card = document.createElement('div');
+      card.className = 'group-card'+(zero?' zero':'');
+      const k = groupKey(g);
+      const nota = comentarios[k];
+      card.innerHTML = `
+        <div class="gcard-header">
+          <div>
+            <div class="gtitle">${escapeHtml(g.modelo)} ${escapeHtml(g.color)}</div>
+            <div class="gtotal">Taco ${g.taco} · <b>${g.total}</b> pares en total</div>
+          </div>
+          <button class="btn-comment${nota?' has-note':''}" data-key="${k}" data-label="${escapeHtml(g.modelo)} ${escapeHtml(g.color)} Taco ${g.taco}">${nota?'✎ Nota':'+ Comentario'}</button>
+        </div>
+        <div class="size-chips">${chips || '<span class="size-chip zero">sin tallas</span>'}</div>
+        ${nota ? `<div class="gcard-note">${escapeHtml(nota)}</div>` : ''}
+      `;
+      card.querySelector('.btn-comment').onclick = (e)=> openCommentModal(e.target.dataset.key, e.target.dataset.label);
+      grid.appendChild(card);
+    });
+  }
+
+  document.getElementById('dashSearch').addEventListener('input', renderDashboard);
+
+  // Tabs
+  document.querySelectorAll('.tab').forEach(tab=>{
+    tab.onclick = ()=>{
+      document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById('panel-'+tab.dataset.tab).classList.add('active');
+    };
+  });
+
+  document.getElementById('stockSearch').addEventListener('input', renderStockGrid);
+  document.getElementById('ventaSearch').addEventListener('input', renderVentaList);
+
+  document.getElementById('in-fecha') && (document.getElementById('in-fecha').value = todayStr());
+  document.getElementById('v-fecha') && (document.getElementById('v-fecha').value = todayStr());
+
+  // ==========================================================
+  // CONFIRMACIÓN GENÉRICA
+  // ==========================================================
+  function openConfirmModal(message, onConfirm){
+    document.getElementById('confirmText').textContent = message;
+    pendingConfirmAction = onConfirm;
+    document.getElementById('confirmOverlay').classList.remove('hidden');
+  }
+  function closeConfirmModal(){
+    pendingConfirmAction = null;
+    document.getElementById('confirmOverlay').classList.add('hidden');
+  }
+  document.getElementById('btnCancelDelete').onclick = closeConfirmModal;
+  document.getElementById('confirmOverlay').addEventListener('click',(e)=>{
+    if(e.target.id==='confirmOverlay') closeConfirmModal();
+  });
+  document.getElementById('btnConfirmDelete').onclick = async ()=>{
+    if(pendingConfirmAction) await pendingConfirmAction();
+    closeConfirmModal();
+  };
+
+  function requestDeleteMovimiento(id){
+    openConfirmModal('Esto eliminará el registro y ajustará el stock y el dashboard automáticamente. ¿Confirmas?', async ()=>{
+      const { error } = await supabase.from('movimientos').delete().eq('id', id);
+      if(error){ showTopMsg('No se pudo eliminar.'); return; }
+      await loadData();
+      showTopMsg('Movimiento eliminado.');
+    });
+  }
+
+  // ==========================================================
+  // VENTA
+  // ==========================================================
+  document.getElementById('btnVenta').onclick = async ()=>{
+    if(!selectedVariant || !window.__selectedVariantData) return;
+    const v = window.__selectedVariantData;
+    const cliente = document.getElementById('v-cliente').value.trim();
+    const fecha = document.getElementById('v-fecha').value;
+    const tipoVenta = document.getElementById('v-tipoventa').value;
+    const canal = document.getElementById('v-canal').value;
+    const pago = document.getElementById('v-pago').value;
+    const msg = document.getElementById('msgVenta');
+
+    if(!fecha){
+      msg.textContent = 'Indica la fecha de la venta.';
+      msg.className = 'msg err';
+      return;
+    }
+    const { error } = await supabase.from('movimientos').insert({
+      tipo: 'venta', modelo: v.modelo, taco: v.taco, color: v.color, talla: v.talla,
+      cantidad: 1, fecha, cliente, tipo_venta: tipoVenta, canal, pago,
+    });
+    if(error){
+      msg.textContent = 'No se pudo registrar la venta. Intenta de nuevo.';
+      msg.className = 'msg err';
+      return;
+    }
+    msg.textContent = `Venta registrada: ${v.modelo} T${v.taco} ${v.color} talla ${v.talla}.`;
+    msg.className = 'msg';
+    selectedVariant = null;
+    window.__selectedVariantData = null;
+    document.getElementById('v-cliente').value='';
+    document.getElementById('ventaSelect').value = '';
+    const btn = document.getElementById('btnVenta');
+    btn.disabled = true;
+    btn.textContent = 'Selecciona una variante';
+    await loadData();
+  };
+
+  // ==========================================================
+  // EDITAR MOVIMIENTO
+  // ==========================================================
+  function openEditModal(id){
+    const m = movimientos.find(x=>x.id===id);
+    if(!m) return;
+    editingId = id;
+    document.getElementById('edit-modelo').value = m.modelo;
+    document.getElementById('edit-taco').value = m.taco;
+    document.getElementById('edit-color').value = m.color;
+    document.getElementById('edit-talla').value = m.talla;
+    document.getElementById('edit-cantidad').value = m.cantidad;
+    document.getElementById('edit-fecha').value = m.fecha;
+    document.getElementById('edit-cantidad-label').textContent = m.tipo==='venta' ? 'Cantidad (normalmente 1)' : 'Cantidad (pares)';
+
+    const isVenta = m.tipo==='venta';
+    document.getElementById('edit-cliente-field').style.display = isVenta ? 'flex':'none';
+    document.getElementById('edit-tipoventa-field').style.display = isVenta ? 'flex':'none';
+    document.getElementById('edit-canal-field').style.display = isVenta ? 'flex':'none';
+    document.getElementById('edit-pago-field').style.display = isVenta ? 'flex':'none';
+    if(isVenta){
+      document.getElementById('edit-cliente').value = m.cliente || '';
+      document.getElementById('edit-tipoventa').value = m.tipoVenta || 'Venta directa';
+      document.getElementById('edit-canal').value = m.canal || 'WSP';
+      document.getElementById('edit-pago').value = m.pago || 'Yape';
+    }
+    document.getElementById('msgEdit').textContent = '';
+    document.getElementById('editOverlay').classList.remove('hidden');
+  }
+  function closeEditModal(){
+    editingId = null;
+    document.getElementById('editOverlay').classList.add('hidden');
+  }
+  document.getElementById('btnCancelEdit').onclick = closeEditModal;
+  document.getElementById('editOverlay').addEventListener('click', (e)=>{
+    if(e.target.id==='editOverlay') closeEditModal();
+  });
+
+  document.getElementById('btnSaveEdit').onclick = async ()=>{
+    if(!editingId) return;
+    const m = movimientos.find(x=>x.id===editingId);
+    if(!m) return;
+
+    const modelo = document.getElementById('edit-modelo').value.trim();
+    const taco = document.getElementById('edit-taco').value;
+    const color = document.getElementById('edit-color').value.trim();
+    const talla = document.getElementById('edit-talla').value;
+    const cantidad = parseInt(document.getElementById('edit-cantidad').value);
+    const fecha = document.getElementById('edit-fecha').value;
+    const msg = document.getElementById('msgEdit');
+
+    if(!modelo || taco==='' || !color || talla==='' || !cantidad || cantidad<1 || !fecha){
+      msg.textContent = 'Completa todos los campos.';
+      msg.className = 'msg err';
+      return;
+    }
+
+    const payload = {
+      modelo, taco: Number(taco), color, talla: Number(talla), cantidad, fecha,
+    };
+    if(m.tipo==='venta'){
+      payload.cliente = document.getElementById('edit-cliente').value.trim();
+      payload.tipo_venta = document.getElementById('edit-tipoventa').value;
+      payload.canal = document.getElementById('edit-canal').value;
+      payload.pago = document.getElementById('edit-pago').value;
+    }
+
+    const { error } = await supabase.from('movimientos').update(payload).eq('id', editingId);
+    if(error){
+      msg.textContent = 'No se pudo guardar el cambio.';
+      msg.className = 'msg err';
+      return;
+    }
+    closeEditModal();
+    await loadData();
+    showTopMsg('Movimiento actualizado.');
+  };
+
+  // ==========================================================
+  // CATÁLOGO DE MODELOS
+  // ==========================================================
+  function suggestCode(modelo, color, taco){
+    const p1 = (modelo||'').trim().slice(0,3).toUpperCase();
+    const p2 = (color||'').trim().slice(0,3).toUpperCase();
+    const p3 = String(taco||0).padStart(2,'0');
+    return [p1,p2,p3].filter(Boolean).join('-');
+  }
+
+  document.getElementById('m-modelo').addEventListener('input', updateSuggestedCode);
+  document.getElementById('m-color').addEventListener('input', updateSuggestedCode);
+  document.getElementById('m-taco').addEventListener('input', updateSuggestedCode);
+  function updateSuggestedCode(){
+    const codigoInput = document.getElementById('m-codigo');
+    if(codigoInput.dataset.touched) return;
+    codigoInput.value = suggestCode(
+      document.getElementById('m-modelo').value,
+      document.getElementById('m-color').value,
+      document.getElementById('m-taco').value
+    );
+  }
+  document.getElementById('m-codigo').addEventListener('input', (e)=>{ e.target.dataset.touched = '1'; });
+
+  document.getElementById('btnAddModelo').onclick = async ()=>{
+    const modelo = document.getElementById('m-modelo').value.trim();
+    const taco = document.getElementById('m-taco').value;
+    const color = document.getElementById('m-color').value.trim();
+    let codigo = document.getElementById('m-codigo').value.trim();
+    const msg = document.getElementById('msgModelo');
+
+    if(!modelo || taco==='' || !color){
+      msg.textContent = 'Completa modelo, taco y color.';
+      msg.className = 'msg err';
+      return;
+    }
+    if(!codigo) codigo = suggestCode(modelo,color,taco);
+
+    const { error } = await supabase.from('modelos').insert({ modelo, taco: Number(taco), color, codigo });
+    if(error){
+      msg.textContent = 'No se pudo agregar el modelo.';
+      msg.className = 'msg err';
+      return;
+    }
+    msg.textContent = `Modelo agregado: ${codigo}`;
+    msg.className = 'msg';
+    document.getElementById('m-modelo').value='';
+    document.getElementById('m-taco').value='';
+    document.getElementById('m-color').value='';
+    document.getElementById('m-codigo').value='';
+    document.getElementById('m-codigo').dataset.touched='';
+    await loadData();
+  };
+
+  function renderModelos(){
+    const list = document.getElementById('modelosList');
+    list.innerHTML = '';
+    document.getElementById('modelosEmpty').style.display = modelosCatalogo.length===0 ? 'block':'none';
+
+    modelosCatalogo.forEach(mo=>{
+      const row = document.createElement('div');
+      if(editingModeloId === mo.id){
+        row.className = 'modelo-row editing';
+        row.innerHTML = `
+          <div class="edit-fields">
+            <input data-f="modelo" value="${escapeHtml(mo.modelo)}" placeholder="Modelo">
+            <input data-f="taco" type="number" value="${mo.taco}" placeholder="Taco">
+            <input data-f="color" value="${escapeHtml(mo.color)}" placeholder="Color">
+            <input data-f="codigo" value="${escapeHtml(mo.codigo)}" placeholder="Código">
+          </div>
+          <div class="actions">
+            <button class="edit" title="Guardar">✓</button>
+            <button class="del" title="Cancelar">✕</button>
+          </div>
+        `;
+        row.querySelector('.edit').onclick = async ()=>{
+          const payload = {
+            modelo: row.querySelector('[data-f="modelo"]').value.trim() || mo.modelo,
+            taco: Number(row.querySelector('[data-f="taco"]').value) || mo.taco,
+            color: row.querySelector('[data-f="color"]').value.trim() || mo.color,
+            codigo: row.querySelector('[data-f="codigo"]').value.trim() || mo.codigo,
+          };
+          const { error } = await supabase.from('modelos').update(payload).eq('id', mo.id);
+          editingModeloId = null;
+          if(error){ showTopMsg('No se pudo guardar el modelo.'); }
+          await loadData();
+        };
+        row.querySelector('.del').onclick = ()=>{
+          editingModeloId = null;
+          renderModelos();
+        };
+      }else{
+        row.className = 'modelo-row';
+        row.innerHTML = `
+          <div class="info"><span class="code">${escapeHtml(mo.codigo)}</span> <b>${escapeHtml(mo.modelo)}</b> ${escapeHtml(mo.color)} · Taco ${mo.taco}</div>
+          <div class="actions">
+            <button class="edit" title="Editar">✎</button>
+            <button class="del" title="Eliminar">✕</button>
+          </div>
+        `;
+        row.querySelector('.edit').onclick = ()=>{
+          editingModeloId = mo.id;
+          renderModelos();
+        };
+        row.querySelector('.del').onclick = ()=>{
+          openConfirmModal('¿Eliminar este modelo del catálogo? El stock que ya registraste con este modelo no se ve afectado.', async ()=>{
+            const { error } = await supabase.from('modelos').delete().eq('id', mo.id);
+            if(error){ showTopMsg('No se pudo eliminar el modelo.'); return; }
+            await loadData();
+          });
+        };
+      }
+      list.appendChild(row);
+    });
+  }
+
+  // ==========================================================
+  // AGREGAR STOCK POR DOCENA
+  // ==========================================================
+  function populateModeloSelect(){
+    const select = document.getElementById('in-modelo-select');
+    const current = select.value;
+    select.innerHTML = '<option value="">Selecciona un modelo del catálogo...</option>' +
+      modelosCatalogo.map(mo=>`<option value="${mo.id}">${escapeHtml(mo.codigo)} — ${escapeHtml(mo.modelo)} ${escapeHtml(mo.color)} Taco ${mo.taco}</option>`).join('');
+    if(modelosCatalogo.some(mo=>mo.id===current)) select.value = current;
+
+    document.getElementById('in-no-modelos').style.display = modelosCatalogo.length===0 ? 'block':'none';
+  }
+
+  document.getElementById('in-modelo-select').addEventListener('change', ()=>{
+    document.getElementById('in-size-section').style.display =
+      document.getElementById('in-modelo-select').value ? 'block' : 'none';
+  });
+
+  document.getElementById('btnGenerarTallas').onclick = ()=>{
+    const desde = parseInt(document.getElementById('in-talla-desde').value);
+    const hasta = parseInt(document.getElementById('in-talla-hasta').value);
+    const grid = document.getElementById('in-size-grid');
+    grid.innerHTML = '';
+    if(isNaN(desde) || isNaN(hasta) || desde>hasta) return;
+    for(let t=desde; t<=hasta; t++){
+      const div = document.createElement('div');
+      div.className = 'size-input-field';
+      div.innerHTML = `<label>Talla ${t}</label><input type="number" min="0" value="0" data-talla="${t}">`;
+      grid.appendChild(div);
+    }
+  };
+  document.getElementById('btnGenerarTallas').click();
+
+  document.getElementById('btnIngreso').onclick = async ()=>{
+    const msg = document.getElementById('msgIngreso');
+    const modeloId = document.getElementById('in-modelo-select').value;
+    const mo = modelosCatalogo.find(m=>m.id===modeloId);
+    const fecha = document.getElementById('in-fecha').value;
+
+    if(!mo){
+      msg.textContent = 'Selecciona un modelo del catálogo.';
+      msg.className = 'msg err';
+      return;
+    }
+    if(!fecha){
+      msg.textContent = 'Indica la fecha del ingreso.';
+      msg.className = 'msg err';
+      return;
+    }
+    const inputs = document.querySelectorAll('#in-size-grid input[data-talla]');
+    const rows = [];
+    inputs.forEach(inp=>{
+      const cantidad = parseInt(inp.value);
+      if(cantidad>0){
+        rows.push({
+          tipo: 'ingreso', modelo: mo.modelo, taco: mo.taco, color: mo.color,
+          talla: Number(inp.dataset.talla), cantidad, fecha,
+        });
+      }
+    });
+
+    if(rows.length===0){
+      msg.textContent = 'Coloca al menos una cantidad mayor a 0 en alguna talla.';
+      msg.className = 'msg err';
+      return;
+    }
+
+    const { error } = await supabase.from('movimientos').insert(rows);
+    if(error){
+      msg.textContent = 'No se pudo registrar el ingreso.';
+      msg.className = 'msg err';
+      return;
+    }
+    const totalAgregado = rows.reduce((s,r)=>s+r.cantidad,0);
+    msg.textContent = `Se agregaron ${totalAgregado} par(es) de ${mo.codigo} — ${mo.modelo} ${mo.color} Taco ${mo.taco}.`;
+    msg.className = 'msg';
+    inputs.forEach(inp=> inp.value = 0);
+    await loadData();
+  };
+
+  // ==========================================================
+  // COMENTARIOS INTERNOS
+  // ==========================================================
+  function openCommentModal(key, label){
+    commentingKey = key;
+    document.getElementById('commentTitle').textContent = `Comentario · ${label}`;
+    document.getElementById('commentText').value = comentarios[key] || '';
+    document.getElementById('commentOverlay').classList.remove('hidden');
+  }
+  function closeCommentModal(){
+    commentingKey = null;
+    document.getElementById('commentOverlay').classList.add('hidden');
+  }
+  document.getElementById('btnCancelComment').onclick = closeCommentModal;
+  document.getElementById('commentOverlay').addEventListener('click',(e)=>{
+    if(e.target.id==='commentOverlay') closeCommentModal();
+  });
+
+  document.getElementById('btnSaveComment').onclick = async ()=>{
+    if(!commentingKey) return;
+    const text = document.getElementById('commentText').value.trim();
+    let error;
+    if(text){
+      ({ error } = await supabase.from('comentarios').upsert({ group_key: commentingKey, texto: text, updated_at: new Date().toISOString() }));
+    }else{
+      ({ error } = await supabase.from('comentarios').delete().eq('group_key', commentingKey));
+    }
+    if(error){ showTopMsg('No se pudo guardar el comentario.'); return; }
+    closeCommentModal();
+    await loadData();
+  };
+
+  document.getElementById('btnClearComment').onclick = async ()=>{
+    if(!commentingKey) return;
+    const { error } = await supabase.from('comentarios').delete().eq('group_key', commentingKey);
+    if(error){ showTopMsg('No se pudo borrar el comentario.'); return; }
+    closeCommentModal();
+    await loadData();
+  };
+
+  // ==========================================================
+  // ARRANQUE
+  // ==========================================================
+  initAuth();
+  </script>
+</body>
+</html>
